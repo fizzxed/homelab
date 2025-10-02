@@ -262,12 +262,12 @@ volumes:
     driver: local
     driver_opts:
       type: nfs
-      o: addr=${REMOTE_HOST},nfsvers=4,rsize=1048576,wsize=1048576,timeo=600,retrans=2,hard
-      device: "/home/fizzy/torrents/qbittorrent"
+      o: addr=${REMOTE_HOST},nfsvers=4
+      device: ":/home/fizzy/torrents/qbittorrent"
 
   torrents-hbd-hdd:
     driver: local
     driver_opts:
       type: nfs
-      o: addr=${REMOTE_HOST},nfsvers=4,rsize=1048576,wsize=1048576,timeo=600,retrans=2,hard
-      device: "/home/fizzy/storage/qbittorrent"
+      o: addr=${REMOTE_HOST},nfsvers=4
+      device: ":/home/fizzy/storage/qbittorrent"
