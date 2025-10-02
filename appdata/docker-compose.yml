@@ -20,7 +20,6 @@ x-pullio-labels: &pullio-labels
 x-tsbridge-labels: &tsbridge-labels
   tsbridge.enabled: "true"
 
-
 x-restart-policy: &restart-policy
   restart: unless-stopped
 
@@ -50,8 +49,7 @@ services:
       - "tsbridge.tailscale.oauth_client_id_env=TS_OAUTH_CLIENT_ID"
       - "tsbridge.tailscale.oauth_client_secret_env=TS_OAUTH_CLIENT_SECRET"
       - "tsbridge.tailscale.state_dir=/var/lib/tsbridge"
-      - "tsbridge.tailscale.default_tags=tag:server" # Must match or be owned by your OAuth client's tag
-        
+      - "tsbridge.tailscale.default_tags=tag:homelab" # Must match or be owned by your OAuth client's tag
 
   # Radarr - https://hotio.dev/containers/radarr/
   # sudo -u docker mkdir -m=00775 /volume1/docker/appdata/radarr
