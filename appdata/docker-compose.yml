@@ -1,436 +1,272 @@
-version: "3.2"
+# Extensions for reusable configurations
+x-common-variables: &common-variables
+  PUID: ${PUID}
+  PGID: ${PGID}
+  TZ: ${TZ}
+  UMASK: 002
+
+x-logging: &default-logging
+  logging:
+    driver: json-file
+    options:
+      max-file: ${DOCKERLOGGING_MAXFILE}
+      max-size: ${DOCKERLOGGING_MAXSIZE}
+
+x-pullio-labels: &pullio-labels
+  org.hotio.pullio.update: ${PULLIO_UPDATE}
+  org.hotio.pullio.notify: ${PULLIO_NOTIFY}
+  org.hotio.pullio.discord.webhook: ${PULLIO_DISCORD_WEBHOOK}
+
+x-tsbridge-labels: &tsbridge-labels
+  tsbridge.enabled: "true"
+
+x-common-volumes: &common-volumes
+  - /etc/localtime:/etc/localtime:ro
+
+x-servarr-volumes: &servarr-volumes
+  - ${DOCKERSTORAGEDIR}:/data
+  - torrents-hbd-nvme:/torrents-nvme:ro
+  - torrents-hbd-hdd:/torrents-hdd:ro
+
+x-restart-policy: &restart-policy
+  restart: unless-stopped
+
+# Complete service base configurations
+x-base-service: &base-service
+  <<: [*restart-policy, *default-logging]
+
+x-servarr-service: &servarr-service
+  <<: *base-service
+  environment:
+    <<: *common-variables
+
 services:
-# Radarr - https://hotio.dev/containers/radarr/
-# sudo -u docker mkdir -m=00775 /volume1/docker/appdata/radarr
+  # tsbridge for Tailscale access
+  tsbridge:
+    image: ghcr.io/jtdowney/tsbridge:latest
+    container_name: tsbridge
+    <<: *base-service
+    command: ["--provider", "docker"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${DOCKERCONFDIR}/tsbridge:/var/lib/tsbridge
+    environment:
+      - TS_OAUTH_CLIENT_ID=${TS_OAUTH_CLIENT_ID}
+      - TS_OAUTH_CLIENT_SECRET=${TS_OAUTH_CLIENT_SECRET}
+    labels:
+      - "tsbridge.tailscale.oauth_client_id_env=TS_OAUTH_CLIENT_ID"
+      - "tsbridge.tailscale.oauth_client_secret_env=TS_OAUTH_CLIENT_SECRET"
+      - "tsbridge.tailscale.state_dir=/var/lib/tsbridge"
+      - "tsbridge.tailscale.default_tags=tag:server" # Must match or be owned by your OAuth client's tag
+        
+
+  # Radarr - https://hotio.dev/containers/radarr/
+  # sudo -u docker mkdir -m=00775 /volume1/docker/appdata/radarr
   radarr:
     container_name: radarr
     image: ghcr.io/hotio/radarr:latest
-    restart: unless-stopped
-    logging:
-      driver: json-file
-      options:
-        max-file: ${DOCKERLOGGING_MAXFILE}
-        max-size: ${DOCKERLOGGING_MAXSIZE}
-    labels:
-      - org.hotio.pullio.update=${PULLIO_UPDATE}
-      - org.hotio.pullio.notify=${PULLIO_NOTIFY}
-      - org.hotio.pullio.discord.webhook=${PULLIO_DISCORD_WEBHOOK}
+    <<: *servarr-service
     ports:
       - 7878:7878
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-      - UMASK=002
+    labels:
+      <<: [*pullio-labels, *tsbridge-labels]
+      tsbridge.service.port: "7878"
     volumes:
-      - /etc/localtime:/etc/localtime:ro
+      - *common-volumes
       - ${DOCKERCONFDIR}/radarr:/config
-      - ${DOCKERSTORAGEDIR}:/data
+      - *servarr-volumes
 
-# 4K Radarr instance. Same as above but only for 4k/UHD Movies
+  # 4K Radarr instance. Same as above but only for 4k/UHD Movies
   4kradarr:
     container_name: 4kradarr
     image: ghcr.io/hotio/radarr:latest
-    restart: unless-stopped
-    logging:
-      driver: json-file
-      options:
-        max-file: ${DOCKERLOGGING_MAXFILE}
-        max-size: ${DOCKERLOGGING_MAXSIZE}
-    labels:
-      - org.hotio.pullio.update=${PULLIO_UPDATE}
-      - org.hotio.pullio.notify=${PULLIO_NOTIFY}
-      - org.hotio.pullio.discord.webhook=${PULLIO_DISCORD_WEBHOOK}
+    <<: *servarr-service
     ports:
       - 7877:7878
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-      - UMASK=002
+    labels:
+      <<: [*pullio-labels, *tsbridge-labels]
+      tsbridge.service.port: "7878"
     volumes:
-      - /etc/localtime:/etc/localtime:ro
+      - *common-volumes
       - ${DOCKERCONFDIR}/4kradarr:/config
-      - ${DOCKERSTORAGEDIR}:/data
+      - *servarr-volumes
 
-# Sonarr - https://hotio.dev/containers/sonarr/
-# sudo -u docker mkdir -m=00775 /volume1/docker/appdata/sonarr
+  # Sonarr - https://hotio.dev/containers/sonarr/
+  # sudo -u docker mkdir -m=00775 /volume1/docker/appdata/sonarr
   sonarr:
     container_name: sonarr
     image: ghcr.io/hotio/sonarr:nightly
-    restart: unless-stopped
-    logging:
-      driver: json-file
-      options:
-        max-file: ${DOCKERLOGGING_MAXFILE}
-        max-size: ${DOCKERLOGGING_MAXSIZE}
-    labels:
-      - org.hotio.pullio.update=${PULLIO_UPDATE}
-      - org.hotio.pullio.notify=${PULLIO_NOTIFY}
-      - org.hotio.pullio.discord.webhook=${PULLIO_DISCORD_WEBHOOK}
+    <<: *servarr-service
     ports:
       - 8989:8989
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-      - UMASK=002
+    labels:
+      <<: [*pullio-labels, *tsbridge-labels]
+      tsbridge.service.port: "8989"
     volumes:
-      - /etc/localtime:/etc/localtime:ro
+      - *common-volumes
       - ${DOCKERCONFDIR}/sonarr:/config
-      - ${DOCKERSTORAGEDIR}:/data
+      - *servarr-volumes
 
   prowlarr:
     container_name: prowlarr
     image: ghcr.io/hotio/prowlarr:latest
-    restart: unless-stopped
-    logging:
-      driver: json-file
-      options:
-        max-file: ${DOCKERLOGGING_MAXFILE}
-        max-size: ${DOCKERLOGGING_MAXSIZE}
-    labels:
-      - org.hotio.pullio.update=${PULLIO_UPDATE}
-      - org.hotio.pullio.notify=${PULLIO_NOTIFY}
-      - org.hotio.pullio.discord.webhook=${PULLIO_DISCORD_WEBHOOK}
+    <<: *servarr-service
     ports:
       - 9696:9696
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-      - UMASK=002
+    labels:
+      <<: [*pullio-labels, *tsbridge-labels]
+      tsbridge.service.port: "9696"
     volumes:
-      - /etc/localtime:/etc/localtime:ro
+      - *common-volumes
       - ${DOCKERCONFDIR}/prowlarr:/config
-      - ${DOCKERSTORAGEDIR}:/data
+      - *servarr-volumes
 
-# Overseerr - https://hotio.dev/containers/overseerr/
-# sudo -u docker mkdir -m=00775 /volume1/docker/appdata/overseerr
+  # Overseerr - https://hotio.dev/containers/overseerr/
+  # sudo -u docker mkdir -m=00775 /volume1/docker/appdata/overseerr
   overseerr:
     container_name: overseerr
     image: ghcr.io/hotio/overseerr:latest
-    restart: unless-stopped
-    logging:
-      driver: json-file
-      options:
-        max-file: ${DOCKERLOGGING_MAXFILE}
-        max-size: ${DOCKERLOGGING_MAXSIZE}
-    labels:
-      - org.hotio.pullio.update=${PULLIO_UPDATE}
-      - org.hotio.pullio.notify=${PULLIO_NOTIFY}
-      - org.hotio.pullio.discord.webhook=${PULLIO_DISCORD_WEBHOOK}
+    <<: *servarr-service
     ports:
       - 5055:5055
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-      - UMASK=002
+    labels:
+      <<: [*pullio-labels, *tsbridge-labels]
+      tsbridge.service.port: "5055"
     volumes:
-      - /etc/localtime:/etc/localtime:ro
+      - *common-volumes
       - ${DOCKERCONFDIR}/overseerr:/config
 
-# Bazarr - https://hotio.dev/containers/bazarr/
-# sudo -u docker mkdir -m=00775 /volume1/docker/appdata/bazarr
+  # Bazarr - https://hotio.dev/containers/bazarr/
+  # sudo -u docker mkdir -m=00775 /volume1/docker/appdata/bazarr
   bazarr:
     container_name: bazarr
     image: ghcr.io/hotio/bazarr:latest
-    restart: unless-stopped
-    logging:
-      driver: json-file
-      options:
-        max-file: ${DOCKERLOGGING_MAXFILE}
-        max-size: ${DOCKERLOGGING_MAXSIZE}
-    labels:
-      - org.hotio.pullio.update=${PULLIO_UPDATE}
-      - org.hotio.pullio.notify=${PULLIO_NOTIFY}
-      - org.hotio.pullio.discord.webhook=${PULLIO_DISCORD_WEBHOOK}
+    <<: *servarr-service
     ports:
       - 6767:6767
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-      - UMASK=002
+    labels:
+      <<: [*pullio-labels, *tsbridge-labels]
+      tsbridge.service.port: "6767"
     volumes:
-      - /etc/localtime:/etc/localtime:ro
+      - *common-volumes
       - ${DOCKERCONFDIR}/bazarr:/config
       - ${DOCKERSTORAGEDIR}/media:/data/media
+      - torrents-hbd-nvme:/torrents-nvme:ro
+      - torrents-hbd-hdd:/torrents-hdd:ro
 
-# redactedhook - https://github.com/s0up4200/redactedhook
-# sudo -u docker mkdir -m=00775 /volume1/docker/appdata/redactedhook
-  redactedhook:
-    container_name: redactedhook
-    image: ghcr.io/s0up4200/redactedhook:latest
-    restart: unless-stopped
-    logging:
-      driver: json-file
-      options:
-        max-file: ${DOCKERLOGGING_MAXFILE}
-        max-size: ${DOCKERLOGGING_MAXSIZE}
-    labels:
-      - org.hotio.pullio.update=${PULLIO_UPDATE}
-      - org.hotio.pullio.notify=${PULLIO_NOTIFY}
-      - org.hotio.pullio.discord.webhook=${PULLIO_DISCORD_WEBHOOK}
-    ports:
-      - 42135:42135
-    user: ${PUID}:${PGID}
-    environment:
-      - TZ=${TZ}
-      - UMASK=002
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - ${DOCKERCONFDIR}/redactedhook:/redactedhook
-
-# upgraderr - https://github.com/kylesanderson/upgraderr
+  # upgraderr - https://github.com/kylesanderson/upgraderr
   upgraderr:
     container_name: upgraderr
     image: ghcr.io/kylesanderson/upgraderr:main
-    restart: unless-stopped
-    logging:
-      driver: json-file
-      options:
-        max-file: ${DOCKERLOGGING_MAXFILE}
-        max-size: ${DOCKERLOGGING_MAXSIZE}
-    labels:
-      - org.hotio.pullio.update=${PULLIO_UPDATE}
-      - org.hotio.pullio.notify=${PULLIO_NOTIFY}
-      - org.hotio.pullio.discord.webhook=${PULLIO_DISCORD_WEBHOOK}
+    <<: *base-service
     ports:
       - 6940:6940
     user: ${PUID}:${PGID}
+    labels:
+      <<: [*pullio-labels, *tsbridge-labels]
+      tsbridge.service.port: "6940"
     environment:
       - TZ=${TZ}
       - UMASK=002
     volumes:
-      - /etc/localtime:/etc/localtime:ro
-    
-# autobrr - https://autobrr.com
-# sudo -u docker mkdir -m=00775 /volume1/docker/appdata/autobrr
+      - *common-volumes
+
+  # autobrr - https://autobrr.com
+  # sudo -u docker mkdir -m=00775 /volume1/docker/appdata/autobrr
   autobrr:
     container_name: autobrr
     image: ghcr.io/autobrr/autobrr:latest
-    restart: unless-stopped
-    logging:
-      driver: json-file
-      options:
-        max-file: ${DOCKERLOGGING_MAXFILE}
-        max-size: ${DOCKERLOGGING_MAXSIZE}
-    labels:
-      - org.hotio.pullio.update=${PULLIO_UPDATE}
-      - org.hotio.pullio.notify=${PULLIO_NOTIFY}
-      - org.hotio.pullio.discord.webhook=${PULLIO_DISCORD_WEBHOOK}
+    <<: *base-service
     ports:
       - 7474:7474
     user: ${PUID}:${PGID}
+    labels:
+      <<: [*pullio-labels, *tsbridge-labels]
+      tsbridge.service.port: "7474"
     environment:
       - TZ=${TZ}
       - UMASK=002
     volumes:
-      - /etc/localtime:/etc/localtime:ro
+      - *common-volumes
       - ${DOCKERCONFDIR}/autobrr:/config:rw
 
-# omegabrr - https://autobrr.com/filters/omegabrr
-# sudo -u docker mkdir -m=00775 /volume1/docker/appdata/omegabrr
-  omegabrr:
-    container_name: omegabrr
-    image: ghcr.io/autobrr/omegabrr:latest
-    restart: unless-stopped
-    logging:
-      driver: json-file
-      options:
-        max-file: ${DOCKERLOGGING_MAXFILE}
-        max-size: ${DOCKERLOGGING_MAXSIZE}
-    labels:
-      - org.hotio.pullio.update=${PULLIO_UPDATE}
-      - org.hotio.pullio.notify=${PULLIO_NOTIFY}
-      - org.hotio.pullio.discord.webhook=${PULLIO_DISCORD_WEBHOOK}
-    ports:
-      - 7441:7441
-    user: ${PUID}:${PGID}
-    environment:
-      - TZ=${TZ}
-      - UMASK=002
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - ${DOCKERCONFDIR}/omegabrr:/config:rw
-
-# Plex - https://hotio.dev/containers/plex/
-# sudo -u docker mkdir -m=00775 -p /volume1/docker/appdata/plex
-# Also please read the extra info => https://trash-guides.info/Hardlinks/How-to-setup-for/Synology/#appdata
+  # Plex - https://hotio.dev/containers/plex/
+  # sudo -u docker mkdir -m=00775 -p /volume1/docker/appdata/plex
+  # Also please read the extra info => https://trash-guides.info/Hardlinks/How-to-setup-for/Synology/#appdata
   plex:
     container_name: plex
     image: ghcr.io/hotio/plex:latest
-    restart: unless-stopped
-    logging:
-      driver: json-file
-      options:
-        max-file: ${DOCKERLOGGING_MAXFILE}
-        max-size: ${DOCKERLOGGING_MAXSIZE}
-    labels:
-      - org.hotio.pullio.update=${PULLIO_UPDATE}
-      - org.hotio.pullio.notify=${PULLIO_NOTIFY}
-      - org.hotio.pullio.discord.webhook=${PULLIO_DISCORD_WEBHOOK}
+    <<: *base-service
     ports:
       - 32400:32400
+    labels:
+      <<: [*pullio-labels, *tsbridge-labels]
+      tsbridge.service.port: "32400"
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-      - UMASK=002
-      - ARGS=
-      - PLEX_CLAIM=${PLEX_CLAIM}
-      - ADVERTISE_IP=${PLEX_ADVERTISE_IP}
-      - ALLOWED_NETWORKS=
-      - PLEX_PASS=${PLEX_PASS}
+      <<: *common-variables
+      ARGS:
+      PLEX_CLAIM: ${PLEX_CLAIM}
+      ADVERTISE_IP: ${PLEX_ADVERTISE_IP}
+      ALLOWED_NETWORKS:
+      PLEX_PASS: ${PLEX_PASS}
     volumes:
-      - /etc/localtime:/etc/localtime:ro
+      - *common-volumes
       - ${DOCKERCONFDIR}/plex:/config:rw
       - ${DOCKERSTORAGEDIR}/media:/data/media:rw
       - ${DOCKERSTORAGEDIR}/transcodes:/transcode:rw # If you want to have transcodes live in RAM consider the below options
-    devices:                                         # optional: if you have a Syno with an Intel CPU with quicksync and want hardware transcoding (only with Plex Pass) uncomment this line.
-      - /dev/dri:/dev/dri                            # optional: if you have a Syno with an Intel CPU with quicksync and want hardware transcoding (only with Plex Pass) uncomment this line.
-#    tmpfs:                                          # optional: if you have a Syno with enough RAM, you can uncomment this line to enable transcoding in RAM. uncomment this line.
-#      - /transcode                                  # optional: if you have a Syno with enough RAM, you can uncomment this line to enable transcoding in RAM. uncomment this line.
+    devices: # optional: if you have a Syno with an Intel CPU with quicksync and want hardware transcoding (only with Plex Pass) uncomment this line.
+      - /dev/dri:/dev/dri # optional: if you have a Syno with an Intel CPU with quicksync and want hardware transcoding (only with Plex Pass) uncomment this line.
+  #    tmpfs:                                          # optional: if you have a Syno with enough RAM, you can uncomment this line to enable transcoding in RAM. uncomment this line.
+  #      - /transcode                                  # optional: if you have a Syno with enough RAM, you can uncomment this line to enable transcoding in RAM. uncomment this line.
 
-# Tautulli - https://hotio.dev/containers/tautulli/
-# sudo -u docker mkdir -m=00775 -p /volume1/docker/appdata/tautulli
+  # Tautulli - https://hotio.dev/containers/tautulli/
+  # sudo -u docker mkdir -m=00775 -p /volume1/docker/appdata/tautulli
   tautulli:
     container_name: tautulli
     image: ghcr.io/hotio/tautulli:latest
-    restart: unless-stopped
-    logging:
-      driver: json-file
-      options:
-        max-file: ${DOCKERLOGGING_MAXFILE}
-        max-size: ${DOCKERLOGGING_MAXSIZE}
-    labels:
-      - org.hotio.pullio.update=${PULLIO_UPDATE}
-      - org.hotio.pullio.notify=${PULLIO_NOTIFY}
-      - org.hotio.pullio.discord.webhook=${PULLIO_DISCORD_WEBHOOK}
+    <<: *servarr-service
     ports:
       - 8181:8181
+    labels:
+      <<: [*pullio-labels, *tsbridge-labels]
+      tsbridge.service.port: "8181"
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-      - UMASK=002
-      - WEBUI_PORTS=8181/tcp,8181/udp
+      <<: *common-variables
+      WEBUI_PORTS: 8181/tcp,8181/udp
     volumes:
-      - /etc/localtime:/etc/localtime:ro
+      - *common-volumes
       - ${DOCKERCONFDIR}/tautulli:/config:rw
-
-  # gluetun:
-  #   container_name: gluetun
-  #   image: qmcgaw/gluetun
-  #   restart: unless-stopped
-  #   logging:
-  #     driver: json-file
-  #     options:
-  #       max-file: ${DOCKERLOGGING_MAXFILE}
-  #       max-size: ${DOCKERLOGGING_MAXSIZE}
-  #   labels:
-  #     - org.hotio.pullio.update=${PULLIO_UPDATE}
-  #     - org.hotio.pullio.notify=${PULLIO_NOTIFY}
-  #     - org.hotio.pullio.discord.webhook=${PULLIO_DISCORD_WEBHOOK}
-  #   cap_add:
-  #     - NET_ADMIN
-  #   ports:
-  #     - 7000:8000 # http server to get state of container, like forwarded port
-  #     - 8080:8080 # used by qbittorrent
-  #   environment:
-  #     - PUID=${PUID}
-  #     - PGID=${PGID}
-  #     - TZ=${TZ}
-  #     - UMASK=002
-  #     - VPN_SERVICE_PROVIDER=custom
-  #     - VPN_TYPE=wireguard
-  #     - VPN_ENDPOINT_IP=91.219.212.202
-  #     - VPN_ENDPOINT_PORT=51820
-  #     - WIREGUARD_PUBLIC_KEY=tGx63A99TQJ0FyCU12ifYkbuBEIhYINR6kUNxLoGz3U=
-  #     - WIREGUARD_PRIVATE_KEY=6PCuh6dNvLvgoDSsOvfrIb/75hQ2w+ily8omEhK9MUY=
-  #     - WIREGUARD_ADDRESSES=10.2.0.2/32
-  #     - VPN_PORT_FORWARDING=on
-  #     - VPN_PORT_FORWARDING_PROVIDER=protonvpn
-  #   volumes:
-  #     - /etc/localtime:/etc/localtime:ro
-  #     - ${DOCKERCONFDIR}/gluetun:/gluetun:rw
-
-  # qbittorrent:
-  #   container_name: qbittorrent
-  #   image: ghcr.io/hotio/qbittorrent:latest
-  #   network_mode: "service:gluetun"
-  #   logging:
-  #     driver: json-file
-  #     options:
-  #       max-file: ${DOCKERLOGGING_MAXFILE}
-  #       max-size: ${DOCKERLOGGING_MAXSIZE}
-  #   #ports: enabled in gluetun
-  #   #  - 8080:8080
-  #   labels:
-  #     - org.hotio.pullio.update=${PULLIO_UPDATE}
-  #     - org.hotio.pullio.notify=${PULLIO_NOTIFY}
-  #     - org.hotio.pullio.discord.webhook=${PULLIO_DISCORD_WEBHOOK}
-  #   environment:
-  #     - PUID=${PUID}
-  #     - PGID=${PGID}
-  #     - TZ=${TZ}
-  #     - UMASK=002
-  #   volumes: 
-  #     - /etc/localtime:/etc/localtime:ro
-  #     - ${DOCKERCONFDIR}/qbittorrent:/config:rw
-  #     - ${DOCKERSTORAGEDIR}/torrents:/data/torrents:rw
-
-# Queue4Download - https://github.com/rj-d2/q4d-docker
-# sudo -u docker mkdir -m=00775 -p /volume1/docker/appdata/q4d
-  # Q4D:
-  #   image: ghcr.io/rj-d2/q4d-docker:latest
-  #   container_name: q4d
-  #   restart: unless-stopped
-  #   logging:
-  #     driver: json-file
-  #     options:
-  #       max-file: ${DOCKERLOGGING_MAXFILE}
-  #       max-size: ${DOCKERLOGGING_MAXSIZE}
-  #   labels:
-  #     - org.hotio.pullio.update=${PULLIO_UPDATE}
-  #     - org.hotio.pullio.notify=${PULLIO_NOTIFY}
-  #     - org.hotio.pullio.discord.webhook=${PULLIO_DISCORD_WEBHOOK}
-  #   ports:
-  #     - "1883:1883"  # MQTT (Mosquitto) port mapping
-  #     - "6546:22"    # SSH port mapping
-  #   user: ${PUID}:${PGID}
-  #   environment:
-  #     - TZ=${TZ}
-  #     - UMASK=002
-  #   volumes:
-  #     - /etc/localtime:/etc/localtime:ro
-  #     - ${DOCKERCONFDIR}/q4d:/root/.Q4D # Persistent storage for Q4D config
-  #     - ${DOCKERCONFDIR}/q4d:/root/.ssh # SSH configuration
-  #     - ${DOCKERSTORAGEDIR}:/data       # Data storage
 
   notifiarr:
     container_name: notifiarr
     hostname: notifiarr
     image: golift/notifiarr
-    restart: unless-stopped
-    logging:
-      driver: json-file
-      options:
-        max-file: ${DOCKERLOGGING_MAXFILE}
-        max-size: ${DOCKERLOGGING_MAXSIZE}
-    labels:
-      - org.hotio.pullio.update=${PULLIO_UPDATE}
-      - org.hotio.pullio.notify=${PULLIO_NOTIFY}
-      - org.hotio.pullio.discord.webhook=${PULLIO_DISCORD_WEBHOOK}
+    <<: *base-service
     ports:
       - 5454:5454
     user: ${PUID}:${PGID}
+    labels:
+      <<: [*pullio-labels, *tsbridge-labels]
+      tsbridge.service.port: "5454"
     environment:
       - TZ=${TZ}
       - UMASK=002
     volumes:
-      - /etc/localtime:/etc/localtime:ro
+      - *common-volumes
       - ${DOCKERCONFDIR}/notifiarr:/config
 
+# Native NFS Volume Definitions
+volumes:
+  torrents-hbd-nvme:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=${REMOTE_HOST},nfsvers=4.2,rsize=1048576,wsize=1048576,timeo=600,retrans=2,soft,noatime,nodiratime
+      device: ":/home/fizzy/torrents/qbittorrent"
+
+  torrents-hbd-hdd:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=${REMOTE_HOST},nfsvers=4.2,rsize=1048576,wsize=1048576,timeo=600,retrans=2,soft,noatime,nodiratime
+      device: ":/home/fizzy/storage/qbittorrent"

@@ -1,0 +1,48 @@
+# Environment files with sensitive data
+appdata/.env
+*.env.local
+*.env.production
+
+# tsbridge state
+appdata/tsbridge/
+
+# Service configuration directories (contain sensitive data)
+appdata/radarr/
+appdata/4kradarr/
+appdata/sonarr/
+appdata/prowlarr/
+appdata/overseerr/
+appdata/bazarr/
+appdata/autobrr/
+appdata/omegabrr/
+appdata/plex/
+appdata/tautulli/
+appdata/notifiarr/
+appdata/gluetun/
+appdata/qbittorrent/
+appdata/portainer-ce/
+appdata/pullio/
+appdata/q4d/
+appdata/redactedhook/
+appdata/autoscan/
+
+# Media and data directories
+data/
+torrents-hbd-nvme/
+torrents-hbd-hdd/
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.swo
+
+# IDE files
+.vscode/
+.idea/
+*.iml
