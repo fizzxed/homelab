@@ -20,13 +20,6 @@ x-pullio-labels: &pullio-labels
 x-tsbridge-labels: &tsbridge-labels
   tsbridge.enabled: "true"
 
-x-common-volumes: &common-volumes
-  - /etc/localtime:/etc/localtime:ro
-
-x-servarr-volumes: &servarr-volumes
-  - ${DOCKERSTORAGEDIR}:/data
-  - torrents-hbd-nvme:/torrents-nvme:ro
-  - torrents-hbd-hdd:/torrents-hdd:ro
 
 x-restart-policy: &restart-policy
   restart: unless-stopped
@@ -72,9 +65,11 @@ services:
       <<: [*pullio-labels, *tsbridge-labels]
       tsbridge.service.port: "7878"
     volumes:
-      - *common-volumes
+      - /etc/localtime:/etc/localtime:ro
       - ${DOCKERCONFDIR}/radarr:/config
-      - *servarr-volumes
+      - ${DOCKERSTORAGEDIR}:/data
+      - torrents-hbd-nvme:/torrents-nvme:ro
+      - torrents-hbd-hdd:/torrents-hdd:ro
 
   # 4K Radarr instance. Same as above but only for 4k/UHD Movies
   4kradarr:
@@ -87,9 +82,11 @@ services:
       <<: [*pullio-labels, *tsbridge-labels]
       tsbridge.service.port: "7878"
     volumes:
-      - *common-volumes
+      - /etc/localtime:/etc/localtime:ro
       - ${DOCKERCONFDIR}/4kradarr:/config
-      - *servarr-volumes
+      - ${DOCKERSTORAGEDIR}:/data
+      - torrents-hbd-nvme:/torrents-nvme:ro
+      - torrents-hbd-hdd:/torrents-hdd:ro
 
   # Sonarr - https://hotio.dev/containers/sonarr/
   # sudo -u docker mkdir -m=00775 /volume1/docker/appdata/sonarr
@@ -103,9 +100,11 @@ services:
       <<: [*pullio-labels, *tsbridge-labels]
       tsbridge.service.port: "8989"
     volumes:
-      - *common-volumes
+      - /etc/localtime:/etc/localtime:ro
       - ${DOCKERCONFDIR}/sonarr:/config
-      - *servarr-volumes
+      - ${DOCKERSTORAGEDIR}:/data
+      - torrents-hbd-nvme:/torrents-nvme:ro
+      - torrents-hbd-hdd:/torrents-hdd:ro
 
   prowlarr:
     container_name: prowlarr
@@ -117,9 +116,11 @@ services:
       <<: [*pullio-labels, *tsbridge-labels]
       tsbridge.service.port: "9696"
     volumes:
-      - *common-volumes
+      - /etc/localtime:/etc/localtime:ro
       - ${DOCKERCONFDIR}/prowlarr:/config
-      - *servarr-volumes
+      - ${DOCKERSTORAGEDIR}:/data
+      - torrents-hbd-nvme:/torrents-nvme:ro
+      - torrents-hbd-hdd:/torrents-hdd:ro
 
   # Overseerr - https://hotio.dev/containers/overseerr/
   # sudo -u docker mkdir -m=00775 /volume1/docker/appdata/overseerr
@@ -133,7 +134,7 @@ services:
       <<: [*pullio-labels, *tsbridge-labels]
       tsbridge.service.port: "5055"
     volumes:
-      - *common-volumes
+      - /etc/localtime:/etc/localtime:ro
       - ${DOCKERCONFDIR}/overseerr:/config
 
   # Bazarr - https://hotio.dev/containers/bazarr/
@@ -148,7 +149,7 @@ services:
       <<: [*pullio-labels, *tsbridge-labels]
       tsbridge.service.port: "6767"
     volumes:
-      - *common-volumes
+      - /etc/localtime:/etc/localtime:ro
       - ${DOCKERCONFDIR}/bazarr:/config
       - ${DOCKERSTORAGEDIR}/media:/data/media
       - torrents-hbd-nvme:/torrents-nvme:ro
@@ -169,7 +170,7 @@ services:
       - TZ=${TZ}
       - UMASK=002
     volumes:
-      - *common-volumes
+      - /etc/localtime:/etc/localtime:ro
 
   # autobrr - https://autobrr.com
   # sudo -u docker mkdir -m=00775 /volume1/docker/appdata/autobrr
@@ -187,7 +188,7 @@ services:
       - TZ=${TZ}
       - UMASK=002
     volumes:
-      - *common-volumes
+      - /etc/localtime:/etc/localtime:ro
       - ${DOCKERCONFDIR}/autobrr:/config:rw
 
   # Plex - https://hotio.dev/containers/plex/
@@ -210,7 +211,7 @@ services:
       ALLOWED_NETWORKS:
       PLEX_PASS: ${PLEX_PASS}
     volumes:
-      - *common-volumes
+      - /etc/localtime:/etc/localtime:ro
       - ${DOCKERCONFDIR}/plex:/config:rw
       - ${DOCKERSTORAGEDIR}/media:/data/media:rw
       - ${DOCKERSTORAGEDIR}/transcodes:/transcode:rw # If you want to have transcodes live in RAM consider the below options
@@ -234,7 +235,7 @@ services:
       <<: *common-variables
       WEBUI_PORTS: 8181/tcp,8181/udp
     volumes:
-      - *common-volumes
+      - /etc/localtime:/etc/localtime:ro
       - ${DOCKERCONFDIR}/tautulli:/config:rw
 
   notifiarr:
@@ -252,7 +253,7 @@ services:
       - TZ=${TZ}
       - UMASK=002
     volumes:
-      - *common-volumes
+      - /etc/localtime:/etc/localtime:ro
       - ${DOCKERCONFDIR}/notifiarr:/config
 
 # Native NFS Volume Definitions
