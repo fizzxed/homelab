@@ -94,7 +94,8 @@ sudo systemctl restart nfs-kernel-server
 1. Go to https://login.tailscale.com/admin/settings/oauth
 2. Create a new OAuth client:
    - Add a descriptive name (e.g., "homelab-tsbridge")
-   - Select scopes: `devices:write` (required for tsbridge)
+   - Under 'Scopes' → 'Auth Keys', check both 'Read' and 'Write'
+   - Select a tag (e.g., `tag:homelab`) that matches the tag in docker-compose.yml
    - Save the client ID and secret
 3. Update `appdata/.env` with your OAuth credentials:
    ```bash
@@ -305,7 +306,7 @@ tar -czf backup-$(date +%Y%m%d).tar.gz appdata/
 - Use strong passwords for all services
 - Consider implementing authentication for exposed services
 - NFS is restricted to Tailscale network only
-- tsbridge OAuth client should only have `devices:write` scope
+- tsbridge OAuth client needs Auth Keys: Read and Write permissions
 - Regularly review Tailscale device access in admin console
 
 ## Support

@@ -164,7 +164,8 @@ TS_OAUTH_CLIENT_SECRET=xxx
 
 1. **Configure Tailscale OAuth**:
    - Go to https://login.tailscale.com/admin/settings/oauth
-   - Create OAuth client with `devices:write` scope
+   - Create OAuth client with Auth Keys scopes: `Read` and `Write`
+   - Select a tag (e.g., `tag:homelab`) that matches the tag in docker-compose.yml
    - Save credentials
 
 2. **Synology Setup**:
@@ -222,13 +223,13 @@ Benefits:
 - `.env` file contains OAuth secrets (gitignored)
 - All service configs excluded from git
 - NFS restricted to Tailscale network only
-- tsbridge OAuth needs only `devices:write` scope
+- tsbridge OAuth needs Auth Keys: Read and Write permissions
 
 ### Performance
 - NVMe mount for active downloads (race categories)
 - HDD mount for long-term seeding
-- NFS optimized with 1MB buffers
-- Soft mounts prevent hanging
+- NFS optimized with 1MB read/write buffers
+- Hard mounts for data integrity (default)
 
 ## Troubleshooting
 
