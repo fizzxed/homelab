@@ -19,6 +19,7 @@ x-pullio-labels: &pullio-labels
 
 x-tsbridge-labels: &tsbridge-labels
   tsbridge.enabled: "true"
+  tsbridge.service.ephemeral: "true"
 
 x-restart-policy: &restart-policy
   restart: unless-stopped
@@ -260,12 +261,12 @@ volumes:
     driver: local
     driver_opts:
       type: nfs
-      o: addr=${REMOTE_HOST},nfsvers=4,rsize=1048576,wsize=1048576
+      o: addr=${REMOTE_HOST},nfsvers=4,rsize=1048576,wsize=1048576,noatime
       device: ":/home/fizzy/torrents/qbittorrent"
 
   torrents-hbd-hdd:
     driver: local
     driver_opts:
       type: nfs
-      o: addr=${REMOTE_HOST},nfsvers=4,rsize=1048576,wsize=1048576
+      o: addr=${REMOTE_HOST},nfsvers=4,rsize=1048576,wsize=1048576,noatime
       device: ":/home/fizzy/storage/qbittorrent"
